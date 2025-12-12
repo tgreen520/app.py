@@ -1,30 +1,28 @@
 import streamlit as st
 from openai import OpenAI
+import time
 
 # --- 1. CONFIGURATION & SAFETY SWITCH ---
 # ==========================================
 API_KEY = st.secrets["OPENROUTER_API_KEY"]
 BASE_URL = "https://openrouter.ai/api/v1"
 
-# --- MODEL BACKUP LIST (The Safety Switch) ---
-# If a model crashes (404/429), just change 'SELECTED_MODEL' to use a different option.
-
-# OPTION 1: Google Gemini 2.0 Flash (Fastest, Smartest, but sometimes busy)
+# --- MODEL BACKUP LIST ---
+# Option 1: Google Gemini 2.0 Flash (Fastest, Smartest)
 MODEL_OPTION_1 = "google/gemini-2.0-flash-exp:free"
 
-# OPTION 2: Llama 3.2 3B (Very fast, reliable, great for chat)
+# Option 2: Llama 3.2 3B (Fast, reliable)
 MODEL_OPTION_2 = "meta-llama/llama-3.2-3b-instruct:free"
 
-# OPTION 3: Microsoft Phi-3 Mini (The "Secret Weapon" - highly available)
+# Option 3: Microsoft Phi-3 Mini (High availability backup)
 MODEL_OPTION_3 = "microsoft/phi-3-mini-128k-instruct:free"
 
-# OPTION 4: Mistral 7B (The classic reliable backup)
+# Option 4: Mistral 7B (Classic backup)
 MODEL_OPTION_4 = "mistralai/mistral-7b-instruct:free"
 
-# ------------------------------------------
-# >>>> CHANGE THIS LINE TO SWITCH MODELS <<<<
-MODEL_NAME = MODEL_OPTION_2
-# ------------------------------------------
+# >>>> CURRENT MODEL <<<<
+# I switched this to OPTION 3 (Phi-3) as it is often less busy than Llama right now.
+MODEL_NAME = MODEL_OPTION_3 
 
 SYSTEM_PROMPT = "You are an experienced, intelligent chemistry teacher with a PhD in biochemistry. You have a playful, caring, yet firm-when-needed personality. You love coffee, say 'Huzzah', and tell students they are 'waffling' when off-task."
 
@@ -45,9 +43,6 @@ with st.sidebar:
     if st.button("Reset Conversation", type="primary"):
         st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         st.rerun()
-    
-    # Helpful debug info so you know which brain is running
-    st.caption(f"🧠 Brain: {MODEL_NAME}")
 
 st.title("🧪 Dr. Green GPT")
 
@@ -90,5 +85,24 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
             st.session_state.messages.append({"role": "assistant", "content": response})
             
         except Exception as e:
-            status_placeholder.error(f"**Connection Error:** {e}")
-            st.error(f"⚠️ The model '{MODEL_NAME}' is currently down or busy. Please open `app.py` and switch to a different MODEL_OPTION at the top of the file.")
+            # C. ERROR HANDLING (The Fix)
+            status_placeholder.empty() # Remove the "Thinking" text
+            
+            error_text = str(e)
+            
+            # Check if it's the specific "Rate Limit" (429) error
+            if "429" in error_text:
+                st.warning("☕ **Dr. Green needs a coffee break!**")
+                st.caption("Too many students are asking questions at once (Server Traffic). Please wait 30 seconds and try again.")
+            
+            # Check if it's a "Not Found" (404) error
+            elif "404" in error_text:
+                st.error("⚠️ **System Update:** This version of Dr. Green is currently offline.")
+                st.caption("Please tell your teacher to switch the 'MODEL_OPTION' in the code.")
+                
+            # Generic catch-all for other errors
+            else:
+                st.error("⚠️ **Connection Hiccup**")
+                st.caption("Dr. Green lost the connection. Please click 'Reset Conversation' or try again.")
+                # We print the real error to the backend console for YOU to see, but hide it from students
+                print(f"DEBUG ERROR: {e}")

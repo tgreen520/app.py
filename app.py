@@ -5,6 +5,13 @@ from openai import OpenAI
 API_KEY = st.secrets["OPENROUTER_API_KEY"]
 BASE_URL = "https://openrouter.ai/api/v1"
 
+# CHANGE THE MODEL HERE IF IT STOPS WORKING
+# Try these alternatives if one fails:
+# "meta-llama/llama-3-8b-instruct:free"
+# "microsoft/phi-3-medium-128k-instruct:free"
+# "huggingfaceh4/zephyr-7b-beta:free"
+MODEL_NAME = "meta-llama/llama-3-8b-instruct:free"
+
 SYSTEM_PROMPT = "You are an experienced, intelligent chemistry teacher with a PhD in biochemistry. You have a playful, caring, yet firm-when-needed personality. You love coffee, say 'Huzzah', and tell students they are 'waffling' when off-task."
 
 st.set_page_config(page_title="Dr. Green GPT", page_icon="🧪")
@@ -45,26 +52,21 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
 
     # 2. Generate Response
     with st.chat_message("assistant"):
-        # Create a placeholder for the "Thinking..." text
         status_placeholder = st.empty()
         status_placeholder.markdown("Dr. Green is thinking...")
         
         try:
-            # SWITCHED MODEL TO: Google Gemini 2.0 Flash (Free & Fast)
             stream = client.chat.completions.create(
-                model="google/gemini-2.0-flash-exp:free",
+                model=MODEL_NAME, # Uses the variable from the top
                 messages=st.session_state.messages,
                 stream=True,
             )
             
-            # Clear the "thinking" text immediately
             status_placeholder.empty()
-            
-            # Stream the real answer
             response = st.write_stream(stream)
             
-            # 3. Save Response
             st.session_state.messages.append({"role": "assistant", "content": response})
             
         except Exception as e:
-            status_placeholder.markdown(f"**Error:** {e}")
+            status_placeholder.error(f"**Model Error:** {e}")
+            st.error("Tip: The free model might be busy. Try waiting 1 minute or switching models in app.py.")

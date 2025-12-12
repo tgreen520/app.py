@@ -43,21 +43,21 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 2. Generate Response (With Text Indicator)
+    # 2. Generate Response
     with st.chat_message("assistant"):
-        # Create a placeholder box
+        # Create a placeholder for the "Thinking..." text
         status_placeholder = st.empty()
-        # Put the text in the box
         status_placeholder.markdown("Dr. Green is thinking...")
         
         try:
+            # We switched the model to Llama 3.1 (Smarter & no <s> errors)
             stream = client.chat.completions.create(
-                model="mistralai/mistral-7b-instruct",
+                model="meta-llama/llama-3.1-8b-instruct:free",
                 messages=st.session_state.messages,
                 stream=True,
             )
             
-            # Clear the "thinking" text immediately before the answer starts
+            # Clear the "thinking" text immediately
             status_placeholder.empty()
             
             # Stream the real answer

@@ -22,7 +22,7 @@ MODEL_OPTION_4 = "mistralai/mistral-7b-instruct:free"
 
 # >>>> CURRENT MODEL <<<<
 # I switched this to OPTION 3 (Phi-3) as it is often less busy than Llama right now.
-MODEL_NAME = MODEL_OPTION_3 
+MODEL_NAME = MODEL_OPTION_1 
 
 SYSTEM_PROMPT = "You are an experienced, intelligent chemistry teacher with a PhD in biochemistry. You have a playful, caring, yet firm-when-needed personality. You love coffee, say 'Huzzah', and tell students they are 'waffling' when off-task."
 

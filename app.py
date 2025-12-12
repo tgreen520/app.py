@@ -2,7 +2,6 @@ import streamlit as st
 from openai import OpenAI
 
 # --- Configuration ---
-# This gets the key from your Secret settings
 API_KEY = st.secrets["OPENROUTER_API_KEY"]
 BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -10,7 +9,14 @@ SYSTEM_PROMPT = "You are an experienced, intelligent chemistry teacher with a Ph
 
 st.set_page_config(page_title="Dr. Green GPT", page_icon="🧪")
 
-# --- Sidebar (Reset Button) ---
+# --- Initialize Client ---
+client = OpenAI(
+    base_url=BASE_URL,
+    api_key=API_KEY,
+    default_headers={"HTTP-Referer": "http://localhost", "X-Title": "Dr. Green GPT"}
+)
+
+# --- Sidebar ---
 with st.sidebar:
     st.header("Control Panel")
     if st.button("Reset Conversation", type="primary"):
@@ -19,43 +25,46 @@ with st.sidebar:
 
 st.title("🧪 Dr. Green GPT")
 
-# --- Initialize Client ---
-if "client" not in st.session_state:
-    st.session_state.client = OpenAI(
-        base_url=BASE_URL,
-        api_key=API_KEY,
-        default_headers={"HTTP-Referer": "http://localhost", "X-Title": "Dr. Green GPT"}
-    )
-
 # --- Initialize History ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-# --- Display EXISTING History ---
-# This loop draws what happened in the PAST
+# --- Display History ---
 for message in st.session_state.messages:
     if message["role"] != "system":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# --- Chat Logic (Handle NEW Input) ---
+# --- Chat Logic ---
 if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
     
-    # 1. Update History
+    # 1. Show User Message
     st.session_state.messages.append({"role": "user", "content": user_input})
-    
-    # 2. Display User Message IMMEDIATELY (The Fix)
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 3. Generate & Display Assistant Response IMMEDIATELY (The Fix)
+    # 2. Generate Response (With Text Indicator)
     with st.chat_message("assistant"):
-        stream = st.session_state.client.chat.completions.create(
-            model="mistralai/mistral-7b-instruct",
-            messages=st.session_state.messages,
-            stream=True,
-        )
-        response = st.write_stream(stream)
-    
-    # 4. Save Assistant Response to History
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        # Create a placeholder box
+        status_placeholder = st.empty()
+        # Put the text in the box
+        status_placeholder.markdown("Dr. Green is thinking...")
+        
+        try:
+            stream = client.chat.completions.create(
+                model="mistralai/mistral-7b-instruct",
+                messages=st.session_state.messages,
+                stream=True,
+            )
+            
+            # Clear the "thinking" text immediately before the answer starts
+            status_placeholder.empty()
+            
+            # Stream the real answer
+            response = st.write_stream(stream)
+            
+            # 3. Save Response
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            
+        except Exception as e:
+            status_placeholder.markdown(f"**Error:** {e}")

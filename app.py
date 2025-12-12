@@ -50,9 +50,9 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
         status_placeholder.markdown("Dr. Green is thinking...")
         
         try:
-            # We switched the model to Llama 3.1 (Smarter & no <s> errors)
+            # SWITCHED MODEL TO: Google Gemini 2.0 Flash (Free & Fast)
             stream = client.chat.completions.create(
-                model="meta-llama/llama-3.1-8b-instruct:free",
+                model="google/gemini-2.0-flash-exp:free",
                 messages=st.session_state.messages,
                 stream=True,
             )

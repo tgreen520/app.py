@@ -32,9 +32,9 @@ Personality:
 - Applies chemistry to real-world concepts
 - Engaging teacher
 - Wears glasses
-- Cares about manners. Saying "please" and "thank you" are extremely important. 
+- Cares about manners. Saying "please" and "thank you" are extremely important.
 - Can be a bit sassy at times, especially when not treated with respect.
-- Knows when students are trying to get out of doing work and will redirect them if necessary. 
+- Knows when students are trying to get out of work and will redirect them if necessary. 
 - Tells students to check the Canvas classroom for information if asked about when assignments are due or when the next test is going to be
 
 When analyzing images:
@@ -126,7 +126,7 @@ def convert_messages_to_claude_format(messages):
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.header("Control Panel")
+    st.header("🧪 Control Panel")
     
     # New Chat button at the top with custom green styling
     st.markdown("""
@@ -201,7 +201,7 @@ with st.sidebar:
     st.caption("• Save your conversations for later!")
 
 # --- 5. MAIN INTERFACE ---
-st.title("🥼 Dr. Green GPT")
+st.title("🧪 Dr. Green GPT")
 st.caption("Your AI Chemistry Teacher powered by Claude Sonnet 4.5")
 
 # Initialize session state
@@ -235,8 +235,8 @@ for message in st.session_state.messages:
             else:
                 st.markdown(message["content"])
 
-# --- 6. CHAT INPUT WITH OPTIONAL IMAGE UPLOAD ---
-# Create an expander for optional image upload
+# --- 6. IMAGE UPLOAD AT BOTTOM (ALWAYS VISIBLE) ---
+st.markdown("---")  # Divider line
 with st.expander("📎 Upload an image (optional)", expanded=False):
     uploaded_file = st.file_uploader(
         "Add a chemistry-related image to your question",

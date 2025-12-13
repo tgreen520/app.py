@@ -1,11 +1,2 @@
-anthropic
-streamlit
-```
-
-### **File Structure Should Look Like:**
-```
-your-project-folder/
-├── app.py
-├── requirements.txt
-└── .streamlit/
-    └── secrets.toml
+anthropic>=0.39.0
+streamlit>=1.31.0

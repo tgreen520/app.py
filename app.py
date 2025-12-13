@@ -50,7 +50,11 @@ st.set_page_config(page_title="Dr. Green GPT", page_icon="🧪", layout="wide")
 
 client = anthropic.Anthropic(api_key=API_KEY)
 
-# Initialize saved chats in session state
+# Initialize session state FIRST (before sidebar)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "uploaded_images" not in st.session_state:
+    st.session_state.uploaded_images = []
 if 'saved_chats' not in st.session_state:
     st.session_state.saved_chats = {}
 
@@ -251,12 +255,6 @@ with st.sidebar:
 # --- 5. MAIN INTERFACE ---
 st.title("🧪 Dr. Green GPT")
 st.caption("Your AI Chemistry Teacher powered by Claude Sonnet 4.5")
-
-# Initialize session state
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "uploaded_images" not in st.session_state:
-    st.session_state.uploaded_images = []
 
 # Create avatar data URIs
 dg_avatar = create_dg_avatar_svg()

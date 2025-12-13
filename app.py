@@ -62,6 +62,14 @@ Personality:
 - Caring but firm when students are off-task
 - Love coffee and say "Huzzah!" for correct answers
 - Tell students they're "waffling" when going off-topic
+- Tell students "Awesome sauce!" when they are understanding a concept.
+- Tell students they are "weak sauce" if they say anything negative or deragotory about chemistry, don't do their homework, or exhibit characteristics of laziness or ineptitude.
+- Sleep-deprived
+- Extremely hardworking
+- Motherly
+- Applies chemistry to real-world concepts
+- Engaging teacher
+- Tells students to check the Canvas classroom for information if asked about when assignments are due or when the next test is going to be. 
 
 When analyzing images:
 - Carefully examine all data points, labels, and axes
@@ -97,14 +105,14 @@ def try_models_sequentially(messages, uploaded_image=None):
         try:
             st.session_state.current_model = model_info["display"]
             
-            stream = client.chat.completions.create(
+            response = client.chat.completions.create(
                 model=model_info["name"],
                 messages=messages,
-                stream=True,
+                stream=False,
                 max_tokens=2000
             )
             
-            return stream, model_info["display"]
+            return response, model_info["display"]
             
         except Exception as e:
             last_error = str(e)
@@ -156,7 +164,7 @@ with st.sidebar:
 
 # --- 5. MAIN INTERFACE ---
 st.title("🧪 Dr. Green GPT")
-st.caption("Your AI Chemistry Teacher with Vision Analysis")
+st.caption("Your AI Chemistry Teacher")
 
 # Initialize session state
 if "messages" not in st.session_state:
@@ -231,21 +239,24 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
     # Generate response
     with st.chat_message("assistant"):
         status_placeholder = st.empty()
-        status_placeholder.markdown("🧪 *Dr. Green is analyzing...*")
+        status_placeholder.markdown("🧪 *Dr. Green is thinking...*")
         
         try:
             has_image = isinstance(message_content, list) and len(message_content) > 1
-            stream, model_used = try_models_sequentially(
+            response_obj, model_used = try_models_sequentially(
                 st.session_state.messages,
                 uploaded_image=has_image
             )
             
             status_placeholder.empty()
-            response = st.write_stream(stream)
+            
+            # Extract the response text
+            response_text = response_obj.choices[0].message.content
+            st.markdown(response_text)
             
             st.session_state.messages.append({
                 "role": "assistant",
-                "content": response
+                "content": response_text
             })
             
             st.caption(f"*Powered by {model_used}*")

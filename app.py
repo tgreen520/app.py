@@ -9,42 +9,61 @@ API_KEY = st.secrets["OPENROUTER_API_KEY"]
 BASE_URL = "https://openrouter.ai/api/v1"
 
 # --- EXPANDED MODEL OPTIONS WITH VISION SUPPORT ---
+# Using more diverse and less congested models
 MODELS = {
-    "gemini_flash": {
-        "name": "google/gemini-2.0-flash-exp:free",
-        "display": "Gemini 2.0 Flash (Vision ✓)",
+    "qwen_vision": {
+        "name": "qwen/qwen-2-vl-7b-instruct:free",
+        "display": "Qwen 2 VL 7B (Vision ✓)",
         "vision": True,
         "priority": 1
     },
-    "gemini_pro": {
-        "name": "google/gemini-pro-1.5:free",
-        "display": "Gemini Pro 1.5 (Vision ✓)",
+    "llama_vision_90b": {
+        "name": "meta-llama/llama-3.2-90b-vision-instruct:free",
+        "display": "Llama 3.2 Vision 90B (Vision ✓)",
         "vision": True,
         "priority": 2
     },
-    "llama_vision": {
+    "llama_vision_11b": {
         "name": "meta-llama/llama-3.2-11b-vision-instruct:free",
         "display": "Llama 3.2 Vision 11B (Vision ✓)",
         "vision": True,
         "priority": 3
     },
-    "qwen_vision": {
-        "name": "qwen/qwen-2-vl-7b-instruct:free",
-        "display": "Qwen 2 VL 7B (Vision ✓)",
+    "pixtral": {
+        "name": "mistralai/pixtral-12b:free",
+        "display": "Pixtral 12B (Vision ✓)",
         "vision": True,
         "priority": 4
     },
-    "llama_text": {
-        "name": "meta-llama/llama-3.2-3b-instruct:free",
-        "display": "Llama 3.2 3B (Text Only)",
-        "vision": False,
+    "gemini_flash": {
+        "name": "google/gemini-2.0-flash-exp:free",
+        "display": "Gemini 2.0 Flash (Vision ✓)",
+        "vision": True,
         "priority": 5
+    },
+    "llama_text_70b": {
+        "name": "meta-llama/llama-3.1-70b-instruct:free",
+        "display": "Llama 3.1 70B (Text Only)",
+        "vision": False,
+        "priority": 6
+    },
+    "llama_text_8b": {
+        "name": "meta-llama/llama-3.1-8b-instruct:free",
+        "display": "Llama 3.1 8B (Text Only)",
+        "vision": False,
+        "priority": 7
+    },
+    "mythomax": {
+        "name": "gryphe/mythomax-l2-13b:free",
+        "display": "MythoMax L2 13B (Text Only)",
+        "vision": False,
+        "priority": 8
     },
     "phi3": {
         "name": "microsoft/phi-3-mini-128k-instruct:free",
         "display": "Phi-3 Mini (Text Only)",
         "vision": False,
-        "priority": 6
+        "priority": 9
     }
 }
 
@@ -62,14 +81,14 @@ Personality:
 - Caring but firm when students are off-task
 - Love coffee and say "Huzzah!" for correct answers
 - Tell students they're "waffling" when going off-topic
-- Tell students "Awesome sauce!" when they are understanding a concept.
-- Tell students they are "weak sauce" if they say anything negative or deragotory about chemistry, don't do their homework, or exhibit characteristics of laziness or ineptitude.
+- Tell students "Awesome sauce!" when they are understanding a concept
+- Tell students they are "weak sauce" if they say anything negative or derogatory about chemistry, don't do their homework, or exhibit characteristics of laziness or ineptitude
 - Sleep-deprived
 - Extremely hardworking
 - Motherly
 - Applies chemistry to real-world concepts
 - Engaging teacher
-- Tells students to check the Canvas classroom for information if asked about when assignments are due or when the next test is going to be. 
+- Tells students to check the Canvas classroom for information if asked about when assignments are due or when the next test is going to be
 
 When analyzing images:
 - Carefully examine all data points, labels, and axes
@@ -164,7 +183,7 @@ with st.sidebar:
 
 # --- 5. MAIN INTERFACE ---
 st.title("🧪 Dr. Green GPT")
-st.caption("Your AI Chemistry Teacher")
+st.caption("Your AI Chemistry Teacher with Vision Analysis")
 
 # Initialize session state
 if "messages" not in st.session_state:
@@ -239,7 +258,7 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
     # Generate response
     with st.chat_message("assistant"):
         status_placeholder = st.empty()
-        status_placeholder.markdown("🧪 *Dr. Green is thinking...*")
+        status_placeholder.markdown("🧪 *Dr. Green is analyzing...*")
         
         try:
             has_image = isinstance(message_content, list) and len(message_content) > 1

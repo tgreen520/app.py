@@ -3,6 +3,8 @@ import anthropic
 import base64
 from io import BytesIO
 import streamlit.components.v1 as components
+import json
+from datetime import datetime
 
 # --- 1. CONFIGURATION ---
 API_KEY = st.secrets["ANTHROPIC_API_KEY"]
@@ -186,6 +188,52 @@ with st.sidebar:
     
     st.divider()
     
+    # Download/Upload Chat Section
+    st.subheader("💾 Export & Import")
+    
+    # Download current chat
+    if st.session_state.messages:
+        chat_data = {
+            "messages": st.session_state.messages,
+            "saved_chats": st.session_state.saved_chats,
+            "exported_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        chat_json = json.dumps(chat_data, indent=2)
+        
+        st.download_button(
+            label="⬇️ Download Chat History",
+            data=chat_json,
+            file_name=f"dr_green_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            use_container_width=True,
+            help="Save your chat history to your computer"
+        )
+    else:
+        st.caption("💬 Start a conversation to enable download")
+    
+    # Upload previous chat
+    uploaded_chat = st.file_uploader(
+        "⬆️ Import Previous Chat",
+        type=["json"],
+        help="Upload a previously downloaded chat file",
+        key="chat_uploader"
+    )
+    
+    if uploaded_chat:
+        try:
+            chat_data = json.loads(uploaded_chat.read())
+            if "messages" in chat_data:
+                st.session_state.messages = chat_data["messages"]
+            if "saved_chats" in chat_data:
+                st.session_state.saved_chats.update(chat_data["saved_chats"])
+            st.success("✓ Chat history imported successfully!")
+            st.rerun()
+        except Exception as e:
+            st.error("❌ Invalid chat file")
+            print(f"Import error: {e}")
+    
+    st.divider()
+    
     st.subheader("📊 Current Session")
     msg_count = len([m for m in st.session_state.get("messages", [])])
     st.metric("Messages", msg_count)
@@ -314,15 +362,14 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
                 "role": "assistant",
                 "content": response_text
             })
-
-
             
         except anthropic.APIError as e:
             status_placeholder.empty()
             
             if e.status_code == 429:
-                st.warning("⚠️ **Rate Limit Reached**")
-                st.caption("You've hit your usage limit. Check your Anthropic Console to add more credits or wait for your limit to reset.")
+                st.warning("☕ **Looks like you are asking a lot of questions....**")
+                st.info("Dr. Green has gone on a coffee break. She will return whenever her brain resets.")
+                st.caption("(Usually takes a few minutes)")
                 
             elif e.status_code == 401:
                 st.error("🔑 **API Key Issue**")

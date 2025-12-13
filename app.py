@@ -232,18 +232,26 @@ for message in st.session_state.messages:
                 st.markdown(message["content"])
 
 # --- 6. CHAT INPUT WITH OPTIONAL IMAGE UPLOAD ---
-# Create an expander for optional image upload
-with st.expander("📎 Upload an image (optional)", expanded=False):
+# Place file uploader right above chat input for better integration
+col1, col2 = st.columns([0.1, 0.9])
+with col1:
+    st.markdown("📎")
+with col2:
     uploaded_file = st.file_uploader(
-        "Add a chemistry-related image to your question",
+        "Attach image",
         type=["png", "jpg", "jpeg", "gif", "webp"],
-        help="Dr. Green can analyze molecular structures, reaction mechanisms, spectra, graphs, and lab equipment",
-        label_visibility="collapsed"
+        help="Optional: Attach graphs, spectra, or molecular structures",
+        label_visibility="collapsed",
+        key="image_uploader"
     )
-    
-    if uploaded_file:
-        st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
-        st.info("💡 Your image will be included with your next message!")
+
+if uploaded_file:
+    with st.container():
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            st.image(uploaded_file, width=80)
+        with col2:
+            st.caption(f"📎 {uploaded_file.name} attached")
 
 # --- 7. CHAT INPUT & RESPONSE ---
 if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):

@@ -43,6 +43,10 @@ st.set_page_config(page_title="Dr. Green GPT", page_icon="🧪", layout="wide")
 
 client = anthropic.Anthropic(api_key=API_KEY)
 
+# Initialize saved chats in session state
+if 'saved_chats' not in st.session_state:
+    st.session_state.saved_chats = {}
+
 # --- 3. HELPER FUNCTIONS ---
 def encode_image(uploaded_file):
     """Convert uploaded image to base64"""
@@ -105,11 +109,47 @@ def convert_messages_to_claude_format(messages):
 with st.sidebar:
     st.header("🧪 Control Panel")
     
-    if st.button("🔄 Reset Conversation", type="primary", use_container_width=True):
-        st.session_state.messages = []
-        if "uploaded_images" in st.session_state:
-            st.session_state.uploaded_images = []
-        st.rerun()
+    # Save/Load Chat Section
+    st.subheader("💾 Save & Load Chats")
+    
+    # Save current chat
+    save_name = st.text_input("Chat name", placeholder="e.g., Stoichiometry Help", key="save_name")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("💾 Save", use_container_width=True, disabled=not save_name):
+            if st.session_state.messages:
+                # Save to session state dictionary
+                st.session_state.saved_chats[save_name] = st.session_state.messages.copy()
+                st.success(f"✓ Saved '{save_name}'!")
+                st.rerun()
+            else:
+                st.warning("No messages to save")
+    
+    with col2:
+        if st.button("🔄 New Chat", type="primary", use_container_width=True):
+            st.session_state.messages = []
+            if "uploaded_images" in st.session_state:
+                st.session_state.uploaded_images = []
+            st.rerun()
+    
+    # Load saved chats
+    if st.session_state.saved_chats:
+        st.caption("📂 Your Saved Chats:")
+        for chat_name in list(st.session_state.saved_chats.keys()):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                if st.button(f"📄 {chat_name}", key=f"load_{chat_name}", use_container_width=True):
+                    st.session_state.messages = st.session_state.saved_chats[chat_name].copy()
+                    st.success(f"✓ Loaded '{chat_name}'!")
+                    st.rerun()
+            with col2:
+                if st.button("🗑️", key=f"delete_{chat_name}"):
+                    del st.session_state.saved_chats[chat_name]
+                    st.success("Deleted!")
+                    st.rerun()
+    else:
+        st.caption("💡 No saved chats yet. Start chatting and save your conversation!")
     
     st.divider()
     
@@ -125,6 +165,7 @@ with st.sidebar:
     st.caption("• Ask about reaction mechanisms")
     st.caption("• Request help with stoichiometry")
     st.caption("• Discuss lab safety and techniques")
+    st.caption("• Save your conversations for later!")
     
     st.divider()
     
@@ -132,7 +173,7 @@ with st.sidebar:
     st.success("✓ No rate limits")
     st.success("✓ Lightning fast responses")
     st.success("✓ Advanced vision analysis")
-    st.success("✓ Consistent quality")
+    st.success("✓ Save & resume chats")
 
 # --- 5. MAIN INTERFACE ---
 st.title("🧪 Dr. Green GPT")
@@ -236,15 +277,8 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
                 "role": "assistant",
                 "content": response_text
             })
-            
-            # Show token usage (helpful for cost tracking)
-            with st.expander("📊 Usage Stats"):
-                st.caption(f"Input tokens: {response.usage.input_tokens}")
-                st.caption(f"Output tokens: {response.usage.output_tokens}")
-                input_cost = (response.usage.input_tokens / 1_000_000) * 3
-                output_cost = (response.usage.output_tokens / 1_000_000) * 15
-                total_cost = input_cost + output_cost
-                st.caption(f"Cost this message: ${total_cost:.4f}")
+
+
             
         except anthropic.APIError as e:
             status_placeholder.empty()

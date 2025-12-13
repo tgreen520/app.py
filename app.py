@@ -31,6 +31,10 @@ Personality:
 - Motherly
 - Applies chemistry to real-world concepts
 - Engaging teacher
+- Wears glasses
+- Cares about manners. Saying "please" and "thank you" are extremely important. 
+- Can be a bit sassy at times, especially when not treated with respect.
+- Knows when students are trying to get out of doing work and will redirect them if necessary. 
 - Tells students to check the Canvas classroom for information if asked about when assignments are due or when the next test is going to be
 
 When analyzing images:
@@ -122,7 +126,7 @@ def convert_messages_to_claude_format(messages):
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.header("🧪 Control Panel")
+    st.header("Control Panel")
     
     # New Chat button at the top with custom green styling
     st.markdown("""
@@ -197,7 +201,7 @@ with st.sidebar:
     st.caption("• Save your conversations for later!")
 
 # --- 5. MAIN INTERFACE ---
-st.title("🧪 Dr. Green GPT")
+st.title("🥼 Dr. Green GPT")
 st.caption("Your AI Chemistry Teacher powered by Claude Sonnet 4.5")
 
 # Initialize session state
@@ -232,26 +236,18 @@ for message in st.session_state.messages:
                 st.markdown(message["content"])
 
 # --- 6. CHAT INPUT WITH OPTIONAL IMAGE UPLOAD ---
-# Place file uploader right above chat input for better integration
-col1, col2 = st.columns([0.1, 0.9])
-with col1:
-    st.markdown("📎")
-with col2:
+# Create an expander for optional image upload
+with st.expander("📎 Upload an image (optional)", expanded=False):
     uploaded_file = st.file_uploader(
-        "Attach image",
+        "Add a chemistry-related image to your question",
         type=["png", "jpg", "jpeg", "gif", "webp"],
-        help="Optional: Attach graphs, spectra, or molecular structures",
-        label_visibility="collapsed",
-        key="image_uploader"
+        help="Dr. Green can analyze molecular structures, reaction mechanisms, spectra, graphs, and lab equipment",
+        label_visibility="collapsed"
     )
-
-if uploaded_file:
-    with st.container():
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            st.image(uploaded_file, width=80)
-        with col2:
-            st.caption(f"📎 {uploaded_file.name} attached")
+    
+    if uploaded_file:
+        st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
+        st.info("💡 Your image will be included with your next message!")
 
 # --- 7. CHAT INPUT & RESPONSE ---
 if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):

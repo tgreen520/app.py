@@ -126,7 +126,7 @@ def convert_messages_to_claude_format(messages):
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.header("🧪 Control Panel")
+    st.header("Control Panel")
     
     # New Chat button at the top with custom green styling
     st.markdown("""

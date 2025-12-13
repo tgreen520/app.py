@@ -1,2 +1,11 @@
+anthropic
 streamlit
-openai
+```
+
+### **File Structure Should Look Like:**
+```
+your-project-folder/
+├── app.py
+├── requirements.txt
+└── .streamlit/
+    └── secrets.toml

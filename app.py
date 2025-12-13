@@ -289,7 +289,7 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
     # Generate response with custom DG avatar
     with st.chat_message("assistant", avatar=dg_avatar):
         status_placeholder = st.empty()
-        status_placeholder.markdown("🧪 *Dr. Green is analyzing...*")
+        status_placeholder.markdown("🧪 *Dr. Green is thinking...*")
         
         try:
             # Convert messages to Claude format

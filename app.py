@@ -2,6 +2,7 @@ import streamlit as st
 import anthropic
 import base64
 from io import BytesIO
+import streamlit.components.v1 as components
 
 # --- 1. CONFIGURATION ---
 API_KEY = st.secrets["ANTHROPIC_API_KEY"]
@@ -48,6 +49,29 @@ if 'saved_chats' not in st.session_state:
     st.session_state.saved_chats = {}
 
 # --- 3. HELPER FUNCTIONS ---
+def create_custom_avatar(letters, bg_color, size=40):
+    """Create a custom circular avatar with letters"""
+    html = f"""
+    <div style="
+        width: {size}px;
+        height: {size}px;
+        border-radius: 50%;
+        background-color: {bg_color};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: {size//2.5}px;
+        color: white;
+        font-family: sans-serif;
+        margin: 0;
+        padding: 0;
+    ">
+        {letters}
+    </div>
+    """
+    return html
+
 def encode_image(uploaded_file):
     """Convert uploaded image to base64"""
     return base64.b64encode(uploaded_file.read()).decode('utf-8')
@@ -109,29 +133,29 @@ def convert_messages_to_claude_format(messages):
 with st.sidebar:
     st.header("🧪 Control Panel")
     
+    # New Chat button at the top
+    if st.button("🔄 New Chat", type="primary", use_container_width=True):
+        st.session_state.messages = []
+        if "uploaded_images" in st.session_state:
+            st.session_state.uploaded_images = []
+        st.rerun()
+    
+    st.divider()
+    
     # Save/Load Chat Section
     st.subheader("💾 Save & Load Chats")
     
     # Save current chat
     save_name = st.text_input("Chat name", placeholder="e.g., Stoichiometry Help", key="save_name")
-    col1, col2 = st.columns(2)
     
-    with col1:
-        if st.button("💾 Save", use_container_width=True, disabled=not save_name):
-            if st.session_state.messages:
-                # Save to session state dictionary
-                st.session_state.saved_chats[save_name] = st.session_state.messages.copy()
-                st.success(f"✓ Saved '{save_name}'!")
-                st.rerun()
-            else:
-                st.warning("No messages to save")
-    
-    with col2:
-        if st.button("🔄 New Chat", type="primary", use_container_width=True):
-            st.session_state.messages = []
-            if "uploaded_images" in st.session_state:
-                st.session_state.uploaded_images = []
+    if st.button("💾 Save", use_container_width=True, disabled=not save_name):
+        if st.session_state.messages:
+            # Save to session state dictionary
+            st.session_state.saved_chats[save_name] = st.session_state.messages.copy()
+            st.success(f"✓ Saved '{save_name}'!")
             st.rerun()
+        else:
+            st.warning("No messages to save")
     
     # Load saved chats
     if st.session_state.saved_chats:
@@ -187,16 +211,28 @@ if "uploaded_images" not in st.session_state:
 
 # Display chat history
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        # Check if message has image content
-        if isinstance(message["content"], list):
-            for content in message["content"]:
-                if content["type"] == "text":
-                    st.markdown(content["text"])
-                elif content["type"] == "image_url":
-                    st.caption("📊 *[Image uploaded]*")
-        else:
-            st.markdown(message["content"])
+    if message["role"] == "user":
+        with st.chat_message("user", avatar="✏️"):
+            # Check if message has image content
+            if isinstance(message["content"], list):
+                for content in message["content"]:
+                    if content["type"] == "text":
+                        st.markdown(content["text"])
+                    elif content["type"] == "image_url":
+                        st.caption("📊 *[Image uploaded]*")
+            else:
+                st.markdown(message["content"])
+    elif message["role"] == "assistant":
+        col1, col2 = st.columns([0.07, 0.93])
+        with col1:
+            st.markdown(create_custom_avatar("DG", "#2d5016"), unsafe_allow_html=True)
+        with col2:
+            if isinstance(message["content"], list):
+                for content in message["content"]:
+                    if content["type"] == "text":
+                        st.markdown(content["text"])
+            else:
+                st.markdown(message["content"])
 
 # --- 6. IMAGE UPLOAD ---
 uploaded_file = st.file_uploader(
@@ -244,13 +280,16 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
     st.session_state.messages.append(user_message)
     
     # Display user message
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar="✏️"):
         if isinstance(message_content, list) and len(message_content) > 1:
             st.caption("📊 *[Image included]*")
         st.markdown(user_input)
     
-    # Generate response
-    with st.chat_message("assistant"):
+    # Generate response with custom avatar
+    col1, col2 = st.columns([0.07, 0.93])
+    with col1:
+        st.markdown(create_custom_avatar("DG", "#2d5016"), unsafe_allow_html=True)
+    with col2:
         status_placeholder = st.empty()
         status_placeholder.markdown("🧪 *Dr. Green is analyzing...*")
         

@@ -49,28 +49,19 @@ if 'saved_chats' not in st.session_state:
     st.session_state.saved_chats = {}
 
 # --- 3. HELPER FUNCTIONS ---
-def create_custom_avatar(letters, bg_color, size=40):
-    """Create a custom circular avatar with letters"""
-    html = f"""
-    <div style="
-        width: {size}px;
-        height: {size}px;
-        border-radius: 50%;
-        background-color: {bg_color};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: {size//2.5}px;
-        color: white;
-        font-family: sans-serif;
-        margin: 0;
-        padding: 0;
-    ">
-        {letters}
-    </div>
-    """
-    return html
+def create_dg_avatar_svg():
+    """Create SVG data URI for Dr. Green avatar"""
+    svg = '''
+    <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="20" fill="#2d5016"/>
+        <text x="20" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="bold" 
+              fill="white" text-anchor="middle" dominant-baseline="central">DG</text>
+    </svg>
+    '''
+    # Convert to base64 data URI
+    svg_bytes = svg.encode('utf-8')
+    svg_base64 = base64.b64encode(svg_bytes).decode('utf-8')
+    return f"data:image/svg+xml;base64,{svg_base64}"
 
 def encode_image(uploaded_file):
     """Convert uploaded image to base64"""
@@ -133,7 +124,21 @@ def convert_messages_to_claude_format(messages):
 with st.sidebar:
     st.header("🧪 Control Panel")
     
-    # New Chat button at the top
+    # New Chat button at the top with custom green styling
+    st.markdown("""
+        <style>
+        div.stButton > button[kind="primary"] {
+            background-color: #2d5016;
+            color: white;
+            border: none;
+        }
+        div.stButton > button[kind="primary"]:hover {
+            background-color: #3d6020;
+            color: white;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     if st.button("🔄 New Chat", type="primary", use_container_width=True):
         st.session_state.messages = []
         if "uploaded_images" in st.session_state:
@@ -209,6 +214,9 @@ if "messages" not in st.session_state:
 if "uploaded_images" not in st.session_state:
     st.session_state.uploaded_images = []
 
+# Create avatar data URIs
+dg_avatar = create_dg_avatar_svg()
+
 # Display chat history
 for message in st.session_state.messages:
     if message["role"] == "user":
@@ -223,10 +231,7 @@ for message in st.session_state.messages:
             else:
                 st.markdown(message["content"])
     elif message["role"] == "assistant":
-        col1, col2 = st.columns([0.07, 0.93])
-        with col1:
-            st.markdown(create_custom_avatar("DG", "#2d5016"), unsafe_allow_html=True)
-        with col2:
+        with st.chat_message("assistant", avatar=dg_avatar):
             if isinstance(message["content"], list):
                 for content in message["content"]:
                     if content["type"] == "text":
@@ -285,11 +290,8 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
             st.caption("📊 *[Image included]*")
         st.markdown(user_input)
     
-    # Generate response with custom avatar
-    col1, col2 = st.columns([0.07, 0.93])
-    with col1:
-        st.markdown(create_custom_avatar("DG", "#2d5016"), unsafe_allow_html=True)
-    with col2:
+    # Generate response with custom DG avatar
+    with st.chat_message("assistant", avatar=dg_avatar):
         status_placeholder = st.empty()
         status_placeholder.markdown("🧪 *Dr. Green is analyzing...*")
         

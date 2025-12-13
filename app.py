@@ -1,71 +1,13 @@
 import streamlit as st
-from openai import OpenAI
-import time
+import anthropic
 import base64
 from io import BytesIO
 
 # --- 1. CONFIGURATION ---
-API_KEY = st.secrets["OPENROUTER_API_KEY"]
-BASE_URL = "https://openrouter.ai/api/v1"
+API_KEY = st.secrets["ANTHROPIC_API_KEY"]
 
-# --- EXPANDED MODEL OPTIONS WITH VISION SUPPORT ---
-# Using more diverse and less congested models
-MODELS = {
-    "qwen_vision": {
-        "name": "qwen/qwen-2-vl-7b-instruct:free",
-        "display": "Qwen 2 VL 7B (Vision ✓)",
-        "vision": True,
-        "priority": 1
-    },
-    "llama_vision_90b": {
-        "name": "meta-llama/llama-3.2-90b-vision-instruct:free",
-        "display": "Llama 3.2 Vision 90B (Vision ✓)",
-        "vision": True,
-        "priority": 2
-    },
-    "llama_vision_11b": {
-        "name": "meta-llama/llama-3.2-11b-vision-instruct:free",
-        "display": "Llama 3.2 Vision 11B (Vision ✓)",
-        "vision": True,
-        "priority": 3
-    },
-    "pixtral": {
-        "name": "mistralai/pixtral-12b:free",
-        "display": "Pixtral 12B (Vision ✓)",
-        "vision": True,
-        "priority": 4
-    },
-    "gemini_flash": {
-        "name": "google/gemini-2.0-flash-exp:free",
-        "display": "Gemini 2.0 Flash (Vision ✓)",
-        "vision": True,
-        "priority": 5
-    },
-    "llama_text_70b": {
-        "name": "meta-llama/llama-3.1-70b-instruct:free",
-        "display": "Llama 3.1 70B (Text Only)",
-        "vision": False,
-        "priority": 6
-    },
-    "llama_text_8b": {
-        "name": "meta-llama/llama-3.1-8b-instruct:free",
-        "display": "Llama 3.1 8B (Text Only)",
-        "vision": False,
-        "priority": 7
-    },
-    "mythomax": {
-        "name": "gryphe/mythomax-l2-13b:free",
-        "display": "MythoMax L2 13B (Text Only)",
-        "vision": False,
-        "priority": 8
-    },
-    "phi3": {
-        "name": "microsoft/phi-3-mini-128k-instruct:free",
-        "display": "Phi-3 Mini (Text Only)",
-        "vision": False,
-        "priority": 9
-    }
-}
+# Claude Sonnet 4.5 - Excellent for chemistry analysis and vision tasks
+MODEL_NAME = "claude-sonnet-4-20250514"
 
 SYSTEM_PROMPT = """You are Dr. Green, an experienced chemistry teacher with a PhD in biochemistry. 
 
@@ -99,74 +41,72 @@ When analyzing images:
 # --- 2. SETUP ---
 st.set_page_config(page_title="Dr. Green GPT", page_icon="🧪", layout="wide")
 
-client = OpenAI(
-    base_url=BASE_URL,
-    api_key=API_KEY,
-    default_headers={"HTTP-Referer": "http://localhost", "X-Title": "Dr. Green GPT"}
-)
+client = anthropic.Anthropic(api_key=API_KEY)
 
 # --- 3. HELPER FUNCTIONS ---
 def encode_image(uploaded_file):
     """Convert uploaded image to base64"""
     return base64.b64encode(uploaded_file.read()).decode('utf-8')
 
-def try_models_sequentially(messages, uploaded_image=None, max_retries=2):
-    """Try models in priority order until one works, with retry logic"""
-    # Filter models based on whether we need vision support
-    available_models = sorted(
-        [(k, v) for k, v in MODELS.items() if not uploaded_image or v["vision"]],
-        key=lambda x: x[1]["priority"]
-    )
+def get_image_media_type(filename):
+    """Determine media type from filename"""
+    ext = filename.lower().split('.')[-1]
+    media_types = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'webp': 'image/webp'
+    }
+    return media_types.get(ext, 'image/jpeg')
+
+def convert_messages_to_claude_format(messages):
+    """Convert session messages to Claude API format"""
+    claude_messages = []
     
-    last_error = None
+    for msg in messages:
+        if msg["role"] == "system":
+            continue  # System prompt handled separately
+            
+        # Handle messages with images
+        if isinstance(msg["content"], list):
+            content_blocks = []
+            for item in msg["content"]:
+                if item["type"] == "text":
+                    content_blocks.append({
+                        "type": "text",
+                        "text": item["text"]
+                    })
+                elif item["type"] == "image_url":
+                    # Extract base64 data from data URL
+                    image_data = item["image_url"]["url"].split(",")[1]
+                    content_blocks.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": image_data
+                        }
+                    })
+            claude_messages.append({
+                "role": msg["role"],
+                "content": content_blocks
+            })
+        else:
+            # Simple text message
+            claude_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
     
-    for model_key, model_info in available_models:
-        # Try each model up to max_retries times
-        for attempt in range(max_retries):
-            try:
-                st.session_state.current_model = model_info["display"]
-                
-                response = client.chat.completions.create(
-                    model=model_info["name"],
-                    messages=messages,
-                    stream=False,
-                    max_tokens=2000
-                )
-                
-                return response, model_info["display"]
-                
-            except Exception as e:
-                last_error = str(e)
-                error_code = None
-                
-                if "429" in last_error:
-                    error_code = "429"
-                elif "404" in last_error or "not found" in last_error.lower():
-                    error_code = "404"
-                elif "503" in last_error:
-                    error_code = "503"
-                
-                # If it's a rate limit error and not the last attempt, wait and retry
-                if error_code == "429" and attempt < max_retries - 1:
-                    time.sleep(2)  # Wait 2 seconds before retrying same model
-                    continue
-                
-                # If it's a temporary error, try next model
-                if error_code in ["429", "503", "404"]:
-                    break  # Break inner loop to try next model
-                else:
-                    # For other errors, stop trying
-                    raise e
-    
-    # If all models failed
-    raise Exception(f"All models unavailable. Last error: {last_error}")
+    return claude_messages
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
     st.header("🧪 Control Panel")
     
     if st.button("🔄 Reset Conversation", type="primary", use_container_width=True):
-        st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        st.session_state.messages = []
         if "uploaded_images" in st.session_state:
             st.session_state.uploaded_images = []
         st.rerun()
@@ -174,11 +114,9 @@ with st.sidebar:
     st.divider()
     
     st.subheader("📊 Current Session")
-    msg_count = len([m for m in st.session_state.get("messages", []) if m["role"] != "system"])
+    msg_count = len([m for m in st.session_state.get("messages", [])])
     st.metric("Messages", msg_count)
-    
-    if "current_model" in st.session_state:
-        st.caption(f"Using: {st.session_state.current_model}")
+    st.caption("Powered by Claude Sonnet 4.5")
     
     st.divider()
     
@@ -187,30 +125,37 @@ with st.sidebar:
     st.caption("• Ask about reaction mechanisms")
     st.caption("• Request help with stoichiometry")
     st.caption("• Discuss lab safety and techniques")
+    
+    st.divider()
+    
+    st.subheader("⚡ Benefits")
+    st.success("✓ No rate limits")
+    st.success("✓ Lightning fast responses")
+    st.success("✓ Advanced vision analysis")
+    st.success("✓ Consistent quality")
 
 # --- 5. MAIN INTERFACE ---
 st.title("🧪 Dr. Green GPT")
-st.caption("Your AI Chemistry Teacher with Vision Analysis")
+st.caption("Your AI Chemistry Teacher powered by Claude Sonnet 4.5")
 
 # Initialize session state
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    st.session_state.messages = []
 if "uploaded_images" not in st.session_state:
     st.session_state.uploaded_images = []
 
 # Display chat history
 for message in st.session_state.messages:
-    if message["role"] != "system":
-        with st.chat_message(message["role"]):
-            # Check if message has image content
-            if isinstance(message["content"], list):
-                for content in message["content"]:
-                    if content["type"] == "text":
-                        st.markdown(content["text"])
-                    elif content["type"] == "image_url":
-                        st.caption("📊 *[Image uploaded]*")
-            else:
-                st.markdown(message["content"])
+    with st.chat_message(message["role"]):
+        # Check if message has image content
+        if isinstance(message["content"], list):
+            for content in message["content"]:
+                if content["type"] == "text":
+                    st.markdown(content["text"])
+                elif content["type"] == "image_url":
+                    st.caption("📊 *[Image uploaded]*")
+        else:
+            st.markdown(message["content"])
 
 # --- 6. IMAGE UPLOAD ---
 uploaded_file = st.file_uploader(
@@ -235,10 +180,11 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
     # Add image if uploaded
     if uploaded_file:
         base64_image = encode_image(uploaded_file)
+        media_type = get_image_media_type(uploaded_file.name)
         message_content.append({
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}"
+                "url": f"data:{media_type};base64,{base64_image}"
             }
         })
         uploaded_file = None  # Clear after adding
@@ -268,40 +214,63 @@ if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
         status_placeholder.markdown("🧪 *Dr. Green is analyzing...*")
         
         try:
-            has_image = isinstance(message_content, list) and len(message_content) > 1
-            response_obj, model_used = try_models_sequentially(
-                st.session_state.messages,
-                uploaded_image=has_image
+            # Convert messages to Claude format
+            claude_messages = convert_messages_to_claude_format(st.session_state.messages)
+            
+            # Call Claude API
+            response = client.messages.create(
+                model=MODEL_NAME,
+                max_tokens=2000,
+                system=SYSTEM_PROMPT,
+                messages=claude_messages
             )
             
             status_placeholder.empty()
             
             # Extract the response text
-            response_text = response_obj.choices[0].message.content
+            response_text = response.content[0].text
             st.markdown(response_text)
             
+            # Store assistant's response
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": response_text
             })
             
-            st.caption(f"*Powered by {model_used}*")
+            # Show token usage (helpful for cost tracking)
+            with st.expander("📊 Usage Stats"):
+                st.caption(f"Input tokens: {response.usage.input_tokens}")
+                st.caption(f"Output tokens: {response.usage.output_tokens}")
+                input_cost = (response.usage.input_tokens / 1_000_000) * 3
+                output_cost = (response.usage.output_tokens / 1_000_000) * 15
+                total_cost = input_cost + output_cost
+                st.caption(f"Cost this message: ${total_cost:.4f}")
+            
+        except anthropic.APIError as e:
+            status_placeholder.empty()
+            
+            if e.status_code == 429:
+                st.warning("⚠️ **Rate Limit Reached**")
+                st.caption("You've hit your usage limit. Check your Anthropic Console to add more credits or wait for your limit to reset.")
+                
+            elif e.status_code == 401:
+                st.error("🔑 **API Key Issue**")
+                st.caption("Your API key is invalid or expired. Please check your Anthropic Console and update your secrets.toml file.")
+                
+            elif e.status_code == 400:
+                st.error("⚠️ **Request Error**")
+                st.caption("There was an issue with the request. This might be due to an image format issue or message structure.")
+                st.caption(f"Details: {str(e)}")
+                
+            else:
+                st.error("⚠️ **API Error**")
+                st.caption(f"Error: {str(e)}")
+                
+            print(f"DEBUG ERROR: {e}")
             
         except Exception as e:
             status_placeholder.empty()
-            error_text = str(e)
-            
-            if "429" in error_text or "rate limit" in error_text.lower():
-                st.warning("☕ **Dr. Green needs a coffee break!**")
-                st.caption("All available AI models are busy. Please wait 30-60 seconds and try again.")
-                
-            elif "all models unavailable" in error_text.lower():
-                st.error("🔴 **High Traffic Alert**")
-                st.caption("All free models are currently at capacity. Try again in a few minutes, or consider using the app during off-peak hours.")
-                
-            else:
-                st.error("⚠️ **Connection Issue**")
-                st.caption("Dr. Green encountered an error. Please click 'Reset Conversation' and try again.")
-                st.caption(f"Error details: {error_text[:200]}")
-                
+            st.error("⚠️ **Unexpected Error**")
+            st.caption("Something went wrong. Please try again or reset the conversation.")
+            st.caption(f"Error: {str(e)}")
             print(f"DEBUG ERROR: {e}")

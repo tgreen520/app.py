@@ -110,8 +110,8 @@ def encode_image(uploaded_file):
     """Convert uploaded image to base64"""
     return base64.b64encode(uploaded_file.read()).decode('utf-8')
 
-def try_models_sequentially(messages, uploaded_image=None):
-    """Try models in priority order until one works"""
+def try_models_sequentially(messages, uploaded_image=None, max_retries=2):
+    """Try models in priority order until one works, with retry logic"""
     # Filter models based on whether we need vision support
     available_models = sorted(
         [(k, v) for k, v in MODELS.items() if not uploaded_image or v["vision"]],
@@ -121,35 +121,42 @@ def try_models_sequentially(messages, uploaded_image=None):
     last_error = None
     
     for model_key, model_info in available_models:
-        try:
-            st.session_state.current_model = model_info["display"]
-            
-            response = client.chat.completions.create(
-                model=model_info["name"],
-                messages=messages,
-                stream=False,
-                max_tokens=2000
-            )
-            
-            return response, model_info["display"]
-            
-        except Exception as e:
-            last_error = str(e)
-            error_code = None
-            
-            if "429" in last_error:
-                error_code = "429"
-            elif "404" in last_error or "not found" in last_error.lower():
-                error_code = "404"
-            elif "503" in last_error:
-                error_code = "503"
-            
-            # If it's a temporary error (rate limit/unavailable), try next model
-            if error_code in ["429", "503", "404"]:
-                continue
-            else:
-                # For other errors, stop trying
-                raise e
+        # Try each model up to max_retries times
+        for attempt in range(max_retries):
+            try:
+                st.session_state.current_model = model_info["display"]
+                
+                response = client.chat.completions.create(
+                    model=model_info["name"],
+                    messages=messages,
+                    stream=False,
+                    max_tokens=2000
+                )
+                
+                return response, model_info["display"]
+                
+            except Exception as e:
+                last_error = str(e)
+                error_code = None
+                
+                if "429" in last_error:
+                    error_code = "429"
+                elif "404" in last_error or "not found" in last_error.lower():
+                    error_code = "404"
+                elif "503" in last_error:
+                    error_code = "503"
+                
+                # If it's a rate limit error and not the last attempt, wait and retry
+                if error_code == "429" and attempt < max_retries - 1:
+                    time.sleep(2)  # Wait 2 seconds before retrying same model
+                    continue
+                
+                # If it's a temporary error, try next model
+                if error_code in ["429", "503", "404"]:
+                    break  # Break inner loop to try next model
+                else:
+                    # For other errors, stop trying
+                    raise e
     
     # If all models failed
     raise Exception(f"All models unavailable. Last error: {last_error}")

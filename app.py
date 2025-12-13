@@ -195,14 +195,6 @@ with st.sidebar:
     st.caption("• Request help with stoichiometry")
     st.caption("• Discuss lab safety and techniques")
     st.caption("• Save your conversations for later!")
-    
-    st.divider()
-    
-    st.subheader("⚡ Benefits")
-    st.success("✓ No rate limits")
-    st.success("✓ Lightning fast responses")
-    st.success("✓ Advanced vision analysis")
-    st.success("✓ Save & resume chats")
 
 # --- 5. MAIN INTERFACE ---
 st.title("🧪 Dr. Green GPT")
@@ -239,19 +231,19 @@ for message in st.session_state.messages:
             else:
                 st.markdown(message["content"])
 
-# --- 6. IMAGE UPLOAD ---
-uploaded_file = st.file_uploader(
-    "📊 Upload a chemistry-related image (graph, spectrum, structure, etc.)",
-    type=["png", "jpg", "jpeg", "gif", "webp"],
-    help="Dr. Green can analyze molecular structures, reaction mechanisms, spectra, graphs, and lab equipment"
-)
-
-if uploaded_file:
-    col1, col2 = st.columns([1, 2])
-    with col1:
+# --- 6. CHAT INPUT WITH OPTIONAL IMAGE UPLOAD ---
+# Create an expander for optional image upload
+with st.expander("📎 Upload an image (optional)", expanded=False):
+    uploaded_file = st.file_uploader(
+        "Add a chemistry-related image to your question",
+        type=["png", "jpg", "jpeg", "gif", "webp"],
+        help="Dr. Green can analyze molecular structures, reaction mechanisms, spectra, graphs, and lab equipment",
+        label_visibility="collapsed"
+    )
+    
+    if uploaded_file:
         st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
-    with col2:
-        st.info("💡 Ask Dr. Green to analyze this image in your next message!")
+        st.info("💡 Your image will be included with your next message!")
 
 # --- 7. CHAT INPUT & RESPONSE ---
 if user_input := st.chat_input("Ask Dr. Green a chemistry question..."):
